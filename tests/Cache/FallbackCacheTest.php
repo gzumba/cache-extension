@@ -64,4 +64,49 @@ class FallbackCacheTest extends TestCase
         self::expectExceptionMessage("fallback removed");
         $this->cache->get('key', fn() => throw $exception);
     }
+
+    public function testUsesSecondaryCallableForFallback(): void
+    {
+        $exception = new \RuntimeException("nothing in cache");
+
+        $res = $this->cache->getWithSecondary('key', fn() => throw $exception, fn() => 'foo');
+        self::assertEquals('foo', $res);
+    }
+
+    public function testGetWithSecondaryReturnsFromCallable(): void
+    {
+        $val = random_int(1, 100);
+        $res = $this->cache->getWithSecondary('key', fn() => $val, fn() => throw new \RuntimeException('nope'));
+        self::assertEquals($val, $res, "Should return value from Callable");
+    }
+
+    public function testGetWithSecondaryReturnsFromCallableEvenWhenCached(): void
+    {
+        $cached_val = 105;
+        // this sets value in cache
+        $this->cache->get('key', fn() => $cached_val);
+        $val = random_int(1, 100);
+        $res = $this->cache->getWithSecondary('key', fn() => $val, fn() => throw new \RuntimeException('nope'));
+        self::assertEquals($val, $res, "Should return value from Callable");
+    }
+
+    public function testGetWithSecondaryReturnsFromCacheWhenCallableThrows(): void
+    {
+        $cached_val = random_int(1, 100);
+        // this sets value in cache
+        $this->cache->get('key', fn() => $cached_val);
+        $res = $this->cache->getWithSecondary('key', fn() => throw new \RuntimeException(), fn() => throw new \RuntimeException('nope'));
+
+        self::assertEquals($cached_val, $res, "Should return value from Cache");
+    }
+
+    public function testGetWithSecondaryReThrowsWhenCacheHasNothing(): void
+    {
+        $exception = new \RuntimeException("nothing in cache");
+
+        self::expectException(\RuntimeException::class);
+        self::expectExceptionMessage("secondary throw");
+        $this->cache->getWithSecondary('key', fn() => throw $exception, fn () => throw new \RuntimeException('secondary throw'));
+    }
+
 }
