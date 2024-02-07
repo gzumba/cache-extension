@@ -14,7 +14,7 @@ class FallbackCache implements CacheInterface
         $this->fallback = $fallback;
     }
 
-    public function get(string $key, callable $callback, float $beta = null, array &$metadata = null)
+    public function get(string $key, callable $callback, float $beta = null, array &$metadata = null): mixed
     {
         try {
             return $this->callAndUpdateCache($callback, $key);
